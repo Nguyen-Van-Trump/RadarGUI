@@ -1,5 +1,3 @@
-# config.py
-
 # ================= RADAR GEOMETRY =================
 RADAR_MARGIN = 0            # lề ngoài radar (px)
 
