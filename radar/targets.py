@@ -1,66 +1,34 @@
 # radar/targets.py
-import random
 import math
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import Qt
-
-
-class Target:
-    def __init__(self, angle, distance, strength=1.0):
-        self.angle = angle
-        self.distance = distance
-        self.strength = strength
-        self.trail = []   # [[angle, distance, alpha], ...]
+from PyQt6.QtGui import QPen, QColor
+from config import COLOR_TARGET
 
 
 class TargetManager:
-    def __init__(self, max_km, count=6):
+    """Hiển thị echo radar"""
+
+    def __init__(self, max_km):
         self.max_km = max_km
-        self.targets = self._generate_targets(count)
+        self.echoes = []
 
-    def _generate_targets(self, n):
-        return [
-            Target(
-                random.uniform(0, 360),
-                random.uniform(0.15 * self.max_km, 0.85 * self.max_km),
-                random.uniform(0.7, 1.3)
-            )
-            for _ in range(n)
-        ]
-
-    def reset(self, max_km, count=6):
-        """Gọi khi đổi mode radar"""
+    def set_range(self, max_km):
         self.max_km = max_km
-        self.targets = self._generate_targets(count)
 
-    def update(self, sweep_angle):
-        """Cập nhật trail khi tia quét đi qua"""
-        for t in self.targets:
-            diff = abs((sweep_angle - t.angle + 180) % 360 - 180)
-            if diff < 2.0:
-                t.trail.insert(0, [t.angle, t.distance, 255])
-
-            for tr in t.trail:
-                tr[2] -= 10
-
-            t.trail = [tr for tr in t.trail if tr[2] > 0]
+    def update_from_echo(self, echoes):
+        self.echoes = echoes
 
     def draw(self, painter, cx, cy, radius):
-        """Vẽ target + đuôi mờ"""
-        for t in self.targets:
-            for ang, dist, alpha in t.trail:
-                r = dist / self.max_km * radius
-                rad = math.radians(90 - ang)
+        for e in self.echoes:
+            ang = e["angle"]
+            km = e["range_km"]
+            power = e.get("power", 1.0)
 
-                x = cx + r * math.cos(rad)
-                y = cy - r * math.sin(rad)
+            r = km / self.max_km * radius
+            rad = math.radians(90 - ang)
 
-                size = int(6 * t.strength)
-                painter.setBrush(QColor(0, 255, 0, int(alpha)))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(
-                    int(x - size / 2),
-                    int(y - size / 2),
-                    size,
-                    size
-                )
+            x = cx + r * math.cos(rad)
+            y = cy - r * math.sin(rad)
+
+            alpha = int(255 * min(power, 1.0))
+            painter.setPen(QPen(QColor(*COLOR_TARGET, alpha), 3))
+            painter.drawPoint(int(x), int(y))
