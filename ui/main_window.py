@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication
 
 from radar.canvas import RadarCanvas
 
-from data.model import RadarModel
+from data.radar_model import RadarModel
 from data.com_input import RadarCOMInput
 from data.simulator import RadarSimulator
 from ui.startup_dialog import StartupDialog
