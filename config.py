@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+# config.py
+
+>>>>>>> edc500f (initial commit)
 # ================= RADAR GEOMETRY =================
 RADAR_MARGIN = 0            # lề ngoài radar (px)
 
