@@ -24,6 +24,9 @@ class RadarCanvas(QWidget):
 
     def update_view(self):
         snap = self.model.get_snapshot()
+        
+        self.grid.set_range_mode(snap["range_mode"])
+        self.targets.set_range_mode(snap["range_mode"])
 
         self.sweep.set_angle(snap["angle"])
         self.target_mgr.update_from_echo(snap["echoes"])

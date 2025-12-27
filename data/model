@@ -1,7 +1,7 @@
 # data/model.py
 import threading
 import time
-from config import WATCHDOG_TIMEOUT
+from config import WATCHDOG_TIMEOUT, DEFAULT_RANGE_MODE
 
 class RadarModel:
     """
@@ -11,10 +11,10 @@ class RadarModel:
     - Watchdog mất tín hiệu
     """
 
-    WATCHDOG_TIMEOUT = 1.0   # giây
-
     def __init__(self):
         self._lock = threading.Lock()
+        
+        self.range_mode = DEFAULT_RANGE_MODE
         
         # ====== SCAN =======
         self.scan_id = 0
@@ -48,6 +48,10 @@ class RadarModel:
             self.connected = True
             self.last_frame_time = now
             self.new_scan = False
+            
+            # ------ range mode ------
+            if "range_mode" in frame:
+                self.range_mode = frame["range_mode"]
 
             # ------ sweep --------
             if "angle" in frame:
@@ -91,7 +95,7 @@ class RadarModel:
     def _check_watchdog(self):
         if self.last_frame_time is None:
             return False
-        return (time.time() - self.last_frame_time) <= self.WATCHDOG_TIMEOUT
+        return (time.time() - self.last_frame_time) <= WATCHDOG_TIMEOUT
 
     def predict_angle(self):
         if self.last_angle_time is None:
@@ -121,6 +125,7 @@ class RadarModel:
                 "connected": alive,
                 "tx_on": self.tx_on,
                 "tx_mode": self.tx_mode,
+                "range_mode": self.range_mode,
                 "dummy": list(self.dummy),
             }
 

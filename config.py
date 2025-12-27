@@ -7,6 +7,7 @@ RANGE_MODES = {
     2: {"step_km": 30, "max_km": 150},
     3: {"step_km": 60, "max_km": 300},
 }
+DEFAULT_RANGE_MODE = 2
 
 # ================= SWEEP =================
 SWEEP_DEFAULT_SPEED = 0    # deg/s

@@ -8,6 +8,12 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from radar.canvas import RadarCanvas
+
+from data.model import RadarModel
+from data.com_input import RadarCOMInput
+from data.simulator import RadarSimulator
+from ui.startup_dialog import StartupDialog
+from ui.simtarget_dialog import SimTargetDialog
 from config import GRID_LABEL_FONT_SIZE
 
 
@@ -15,11 +21,64 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Radar Display")
+        self.setWindowTitle("Radar PPI")
         self.showFullScreen()
+        
+        # ===== MODEL =====
+        self.model = RadarModel()
 
         # ===== RADAR CANVAS =====
         self.radar = RadarCanvas()
+        self.setCentralWidget(self.canvas)
+        
+        # ===== DATA SOURCE =====
+        self.input_device = None
+        self.simulator = None
+        self.sim_dialog = None
+
+        self.select_mode()
+        
+    # =============================
+    # MODE SELECTION
+    # =============================
+    def select_mode(self):
+        dlg = StartupDialog(self)
+        dlg.exec()
+
+        if dlg.choice == "REAL":
+            self.start_real_radar()
+        elif dlg.choice == "SIM":
+            self.start_simulator()
+    
+    # =============================
+    # REAL RADAR
+    # =============================
+    def start_real_radar(self):
+        self.input_device = RadarCOMInput(self.model)
+        self.input_device.start()
+
+    # =============================
+    # SIMULATOR
+    # =============================
+    def start_simulator(self):
+        self.simulator = RadarSimulator(self.model)
+        self.simulator.start()
+
+        self.sim_dialog = SimTargetDialog(self.simulator)
+        self.sim_dialog.show()
+
+    # =============================
+    # CLEAN EXIT
+    # =============================
+    def closeEvent(self, event):
+        if self.input_device:
+            self.input_device.stop()
+
+        if self.simulator:
+            self.simulator.stop()
+
+        event.accept()
+
 
         # ===== CONTROLS =====
         btn_exit = QPushButton("EXIT")
