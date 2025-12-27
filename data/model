@@ -1,7 +1,7 @@
 # data/model.py
 import threading
 import time
-
+from config import WATCHDOG_TIMEOUT
 
 class RadarModel:
     """
@@ -15,10 +15,15 @@ class RadarModel:
 
     def __init__(self):
         self._lock = threading.Lock()
+        
+        # ====== SCAN =======
+        self.scan_id = 0
+        self.new_scan = False
 
         # ===== SWEEP =====
         self.angle = 0.0
         self.speed = 0.0
+        self.prev_angle = None
         self.last_angle_time = None
 
         # ===== ECHO (PPI) =====
@@ -42,10 +47,19 @@ class RadarModel:
             # ----- connection -----
             self.connected = True
             self.last_frame_time = now
+            self.new_scan = False
 
-            # ----- sweep -----
+            # ------ sweep --------
             if "angle" in frame:
-                self.angle = frame["angle"] % 360
+                ang = frame["angle"] % 360
+
+                if self.prev_angle is not None and ang < self.prev_angle:
+                    self.scan_id += 1
+                    self.new_scan = True
+                    self.echo_map.clear()
+
+                self.prev_angle = ang
+                self.angle = ang
                 self.last_angle_time = now
 
             if "speed" in frame:
@@ -102,6 +116,8 @@ class RadarModel:
                 "angle": self.predict_angle(),
                 "speed": self.speed,
                 "echoes": echoes,
+                "scan_id": self.scan_id,
+                "new_scan": self.new_scan,
                 "connected": alive,
                 "tx_on": self.tx_on,
                 "tx_mode": self.tx_mode,
