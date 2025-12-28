@@ -4,8 +4,8 @@ from PyQt6.QtWidgets import (
 
 
 class StartupDialog(QDialog):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("Radar Mode Selection")
         self.choice = None
 

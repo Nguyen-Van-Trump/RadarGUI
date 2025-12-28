@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QDialog, QFormLayout, QDoubleSpinBox,
-    QPushButton, QMessageBox
+    QPushButton, QMessageBox, QHBoxLayout
 )
 from data.simulator import SimTarget
 
@@ -9,7 +9,7 @@ class SimTargetDialog(QDialog):
     def __init__(self, simulator):
         super().__init__()
         self.simulator = simulator
-        self.setWindowTitle("Tạo mục tiêu giả (tối đa 5)")
+        self.setWindowTitle("Tạo mục tiêu giả (SIM)")
 
         layout = QFormLayout(self)
 
@@ -23,8 +23,8 @@ class SimTargetDialog(QDialog):
 
         self.speed = QDoubleSpinBox()
         self.speed.setRange(0, 5)
-        self.speed.setSuffix(" km/s")
         self.speed.setSingleStep(0.1)
+        self.speed.setSuffix(" km/s")
 
         self.heading = QDoubleSpinBox()
         self.heading.setRange(0, 360)
@@ -35,9 +35,22 @@ class SimTargetDialog(QDialog):
         layout.addRow("Tốc độ mục tiêu", self.speed)
         layout.addRow("Hướng bay", self.heading)
 
-        btn = QPushButton("Thêm mục tiêu")
-        btn.clicked.connect(self.add_target)
-        layout.addWidget(btn)
+        # ===== BUTTONS =====
+        btn_add = QPushButton("Thêm mục tiêu")
+        btn_add.clicked.connect(self.add_target)
+
+        btn_start = QPushButton("START SIM")
+        btn_start.clicked.connect(self.start_sim)
+
+        btn_stop = QPushButton("STOP")
+        btn_stop.clicked.connect(self.stop_sim)
+
+        h = QHBoxLayout()
+        h.addWidget(btn_add)
+        h.addWidget(btn_start)
+        h.addWidget(btn_stop)
+
+        layout.addRow(h)
 
     def add_target(self):
         t = SimTarget(
@@ -51,5 +64,11 @@ class SimTargetDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Giới hạn",
-                "Chỉ được tạo tối đa 5 mục tiêu giả"
+                "Chỉ được tạo tối đa số mục tiêu cho phép"
             )
+
+    def start_sim(self):
+        self.simulator.running = True
+
+    def stop_sim(self):
+        self.simulator.running = False

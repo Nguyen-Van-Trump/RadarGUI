@@ -39,12 +39,62 @@ class RadarSimulator(threading.Thread):
 
         self.angle = 0.0
         self.speed = 24.0
-        self.running = False
+
+        self.running = False      # CHỈ phát khi True
+        self.alive = True         # điều khiển vòng thread
+
         self.last_time = time.time()
-        
-    def add_target(self, target: SimTarget):
+
+    def stop(self):
+        self.alive = False
+
+    def add_target(self, target):
         if len(self.targets) >= self.max_targets:
             return False
         self.targets.append(target)
         return True
+
+    def run(self):
+        self.last_time = time.time()
+
+        while self.alive:
+            now = time.time()
+            dt = now - self.last_time
+            self.last_time = now
+
+            if not self.running:
+                time.sleep(0.05)
+                continue
+
+            # ===== SWEEP =====
+            self.angle = (self.angle + self.speed * dt) % 360
+
+            ranges = []
+            power = []
+
+            for t in self.targets:
+                t.step(dt)
+                ang, r = t.polar()
+
+                # echo gần tia quét
+                BEAM_WIDTH = 3.0  # độ, có thể 3–6
+
+                if abs((ang - self.angle + 180) % 360 - 180) < BEAM_WIDTH / 2:
+                    ranges.append(r)
+                    power.append(t.power)
+
+            frame = {
+                "angle": self.angle,
+                "speed": self.speed,
+                "ranges": ranges,
+                "power": power,
+                "status": {
+                    "tx_on": self.running,
+                    "tx_mode": 1,
+                    "dummy": [0] * 10
+                }
+            }
+
+            self.model.update_from_device(frame)
+            time.sleep(0.03)
 
