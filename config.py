@@ -45,3 +45,6 @@ CURSOR_TEXT_OFFSET = 20
 
 #================== WATCHDOG ===============
 WATCHDOG_TIMEOUT = 1.0
+
+#================== HYSTERESIS ===============
+HYSTERESIS_RATIO = 0.9

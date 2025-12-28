@@ -1,7 +1,9 @@
 from PyQt6.QtWidgets import (
-    QDialog, QFormLayout, QDoubleSpinBox,
-    QPushButton, QMessageBox, QHBoxLayout
+    QDialog, QVBoxLayout, QFormLayout,
+    QDoubleSpinBox, QPushButton, QListWidget,
+    QListWidgetItem, QHBoxLayout, QCheckBox, QLabel
 )
+from PyQt6.QtCore import Qt
 from data.simulator import SimTarget
 
 
@@ -9,9 +11,12 @@ class SimTargetDialog(QDialog):
     def __init__(self, simulator):
         super().__init__()
         self.simulator = simulator
-        self.setWindowTitle("Tạo mục tiêu giả (SIM)")
+        self.setWindowTitle("Radar Simulator Control")
 
-        layout = QFormLayout(self)
+        main = QVBoxLayout(self)
+
+        # ================= INPUT FORM =================
+        form = QFormLayout()
 
         self.angle = QDoubleSpinBox()
         self.angle.setRange(0, 360)
@@ -30,27 +35,59 @@ class SimTargetDialog(QDialog):
         self.heading.setRange(0, 360)
         self.heading.setSuffix(" °")
 
-        layout.addRow("Góc ban đầu", self.angle)
-        layout.addRow("Cự ly ban đầu", self.range_km)
-        layout.addRow("Tốc độ mục tiêu", self.speed)
-        layout.addRow("Hướng bay", self.heading)
+        form.addRow("Góc ban đầu", self.angle)
+        form.addRow("Cự ly ban đầu", self.range_km)
+        form.addRow("Tốc độ mục tiêu", self.speed)
+        form.addRow("Hướng bay", self.heading)
 
-        # ===== BUTTONS =====
+        main.addLayout(form)
+
+        # ================= AUTO SCALE =================
+        self.chk_auto = QCheckBox("Auto scale range")
+        self.chk_auto.setChecked(True)
+        self.chk_auto.stateChanged.connect(self.toggle_auto_scale)
+        main.addWidget(self.chk_auto)
+
+        # ================= BUTTONS =================
         btn_add = QPushButton("Thêm mục tiêu")
         btn_add.clicked.connect(self.add_target)
 
-        btn_start = QPushButton("START SIM")
-        btn_start.clicked.connect(self.start_sim)
+        btn_start = QPushButton("START")
+        btn_start.clicked.connect(lambda: setattr(self.simulator, "running", True))
 
         btn_stop = QPushButton("STOP")
-        btn_stop.clicked.connect(self.stop_sim)
+        btn_stop.clicked.connect(lambda: setattr(self.simulator, "running", False))
 
-        h = QHBoxLayout()
-        h.addWidget(btn_add)
-        h.addWidget(btn_start)
-        h.addWidget(btn_stop)
+        h_btn = QHBoxLayout()
+        h_btn.addWidget(btn_add)
+        h_btn.addWidget(btn_start)
+        h_btn.addWidget(btn_stop)
 
-        layout.addRow(h)
+        main.addLayout(h_btn)
+
+        # ================= TARGET LIST =================
+        main.addWidget(QLabel("Danh sách mục tiêu"))
+
+        self.list_targets = QListWidget()
+        self.list_targets.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        main.addWidget(self.list_targets)
+
+        # ================= DELETE / RESET =================
+        btn_del = QPushButton("Xóa mục tiêu đã chọn")
+        btn_del.clicked.connect(self.delete_selected)
+
+        btn_reset = QPushButton("RESET SIMULATOR")
+        btn_reset.clicked.connect(self.reset_simulator)
+
+        h2 = QHBoxLayout()
+        h2.addWidget(btn_del)
+        h2.addWidget(btn_reset)
+
+        main.addLayout(h2)
+
+    # ================= CALLBACKS =================
+    def toggle_auto_scale(self, state):
+        self.simulator.auto_scale = bool(state)
 
     def add_target(self):
         t = SimTarget(
@@ -60,15 +97,19 @@ class SimTargetDialog(QDialog):
             heading_deg=self.heading.value(),
         )
 
-        if not self.simulator.add_target(t):
-            QMessageBox.warning(
-                self,
-                "Giới hạn",
-                "Chỉ được tạo tối đa số mục tiêu cho phép"
+        if self.simulator.add_target(t):
+            item = QListWidgetItem(
+                f"R={self.range_km.value():.1f} km | "
+                f"V={self.speed.value():.1f} km/s"
             )
+            self.list_targets.addItem(item)
 
-    def start_sim(self):
-        self.simulator.running = True
+    def delete_selected(self):
+        row = self.list_targets.currentRow()
+        if row >= 0:
+            self.simulator.remove_target(row)
+            self.list_targets.takeItem(row)
 
-    def stop_sim(self):
-        self.simulator.running = False
+    def reset_simulator(self):
+        self.simulator.reset()
+        self.list_targets.clear()
