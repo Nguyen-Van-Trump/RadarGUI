@@ -39,7 +39,7 @@ class RadarSimulator(threading.Thread):
 
         # ===== SWEEP =====
         self.angle = 0.0
-        self.speed = 24.0  # deg/s
+        self.speed = 0.0  # deg/s
 
         # ===== THREAD CONTROL =====
         self.running = False     # phát dữ liệu
@@ -100,6 +100,20 @@ class RadarSimulator(threading.Thread):
             return lower_mode
 
         return self.range_mode
+    
+    # ================= SWEEP CONTROL =================
+    def set_sweep_angle(self, angle_deg: float):
+        """
+        Đặt lại vị trí đường quét (deg)
+        """
+        self.angle = angle_deg % 360
+
+    def set_sweep_speed(self, speed_deg_s: float):
+        """
+        Đặt tốc độ quét (deg/s)
+        """
+        self.speed = max(0.0, min(16.0, speed_deg_s))
+
             
     # ================= TARGET CONTROL =================
     def remove_target(self, index):
