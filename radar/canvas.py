@@ -1,86 +1,75 @@
-# radar/canvas.py
-import math
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPainter, QColor
 
-from .grid import GridManager
-from .targets import TargetManager
-from .markers import MarkerManager
-from .cursor import CursorManager
-from .sweep import SweepController
-from config import RADAR_MARGIN, RANGE_MODES, MARKER_MAX
+from config import RADAR_MARGIN, COLOR_BG, DEFAULT_RANGE_MODE
+from radar.grid import GridManager
+from radar.sweep import SweepController
+from radar.targets import TargetManager
+from radar.markers import MarkerManager
 
 
 class RadarCanvas(QWidget):
-    def __init__(self):
+    def __init__(self, model):
         super().__init__()
+        self.model = model
 
-        # ===== RANGE MODES =====
-        self.range_modes = RANGE_MODES
-        self.mode = 2
-        self.step_km, self.max_km = self.range_modes[self.mode].values()
-
-        # ===== SUBSYSTEMS =====
-        self.grid_mgr = GridManager(self.step_km, self.max_km)
-        self.target_mgr = TargetManager(self.max_km)
-        self.marker_mgr = MarkerManager(max_markers=MARKER_MAX)
-        self.cursor_mgr = CursorManager()
+        # ===== MANAGERS =====
+        self.grid_mgr = GridManager()
         self.sweep = SweepController()
+        self.target_mgr = TargetManager()
+        self.marker_mgr = MarkerManager()
 
-        # ===== TIMER =====
+        # set range mặc định ngay khi khởi tạo
+        self.grid_mgr.set_range_mode(DEFAULT_RANGE_MODE)
+        self.target_mgr.set_range_mode(DEFAULT_RANGE_MODE)
+
+        # ===== UPDATE TIMER =====
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_radar)
+        self.timer.timeout.connect(self.update_view)
         self.timer.start(30)
 
+        # cho phép nhận sự kiện chuột
         self.setMouseTracking(True)
 
     # ================= UPDATE =================
-    def update_radar(self):
-        dt = 0.03
-        self.sweep.update(dt)
-        self.target_mgr.update(self.sweep.angle)
+    def update_view(self):
+        snap = self.model.get_snapshot()
+
+        # ===== RANGE MODE =====
+        rm = snap.get("range_mode", DEFAULT_RANGE_MODE)
+        self.grid_mgr.set_range_mode(rm)
+        self.target_mgr.set_range_mode(rm)
+
+        # ===== SWEEP =====
+        self.sweep.set_angle(snap["angle"])
+
+        # ===== TARGETS =====
+        self.target_mgr.update_from_echo(snap["echoes"])
+
         self.update()
 
-    # ================= MODE =================
-    def set_mode(self, mode):
-        self.mode = mode
-        self.step_km, self.max_km = self.range_modes[mode].values()
-
-        self.grid_mgr.set_range(self.step_km, self.max_km)
-        self.target_mgr.reset(self.max_km)
-        self.marker_mgr.clear()
-
-        self.update()
-
-    # ================= SPEED / DIR =================
-    def set_speed(self, value):
-        self.sweep.set_speed(value)
-
-    def toggle_direction(self):
-        self.sweep.toggle_direction()
-
-    # ================= MOUSE =================
-    def mouseMoveEvent(self, event):
-        self.cursor_mgr.update_position(event.position())
-        self.update()
-
+    # ================= INPUT =================
     def mousePressEvent(self, event):
+        if not self.marker_mgr.enabled:
+            return
+
         w, h = self.width(), self.height()
         cx, cy = w // 2, h // 2
         radius = min(w, h) // 2 - RADAR_MARGIN
 
-        used = self.marker_mgr.handle_mouse(
+        changed = self.marker_mgr.handle_mouse(
             event,
-            cx, cy,
+            cx,
+            cy,
             radius,
-            self.max_km
+            self.target_mgr.max_km
         )
 
-        if used:
+        if changed:
             self.update()
 
-    # ================= PAINT =================
+    # ================= DRAW =================
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -89,17 +78,18 @@ class RadarCanvas(QWidget):
         cx, cy = w // 2, h // 2
         radius = min(w, h) // 2 - RADAR_MARGIN
 
-        painter.fillRect(self.rect(), QColor(0, 0, 0))
+        painter.fillRect(self.rect(), QColor(*COLOR_BG))
 
-        # ===== DRAW ORDER =====
         self.grid_mgr.draw(painter, cx, cy, radius)
         self.target_mgr.draw(painter, cx, cy, radius)
-        self.marker_mgr.draw(painter, cx, cy, radius, self.max_km)
-        self.sweep.draw(painter, cx, cy, radius)
-        self.cursor_mgr.draw(
+
+        # ===== MARKERS =====
+        self.marker_mgr.draw(
             painter,
-            cx, cy,
+            cx,
+            cy,
             radius,
-            self.max_km,
-            h
+            self.target_mgr.max_km
         )
+
+        self.sweep.draw(painter, cx, cy, radius)

@@ -1,66 +1,53 @@
 # radar/targets.py
-import random
 import math
-from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt
-
-
-class Target:
-    def __init__(self, angle, distance, strength=1.0):
-        self.angle = angle
-        self.distance = distance
-        self.strength = strength
-        self.trail = []   # [[angle, distance, alpha], ...]
+from PyQt6.QtGui import QColor
+from config import COLOR_TARGET, RANGE_MODES, DEFAULT_RANGE_MODE
 
 
 class TargetManager:
-    def __init__(self, max_km, count=6):
-        self.max_km = max_km
-        self.targets = self._generate_targets(count)
+    def __init__(self):
+        # init an toàn theo range mặc định
+        self.range_mode = DEFAULT_RANGE_MODE
+        self.max_km = RANGE_MODES[self.range_mode]["max_km"]
+        self.targets = []
 
-    def _generate_targets(self, n):
-        return [
-            Target(
-                random.uniform(0, 360),
-                random.uniform(0.15 * self.max_km, 0.85 * self.max_km),
-                random.uniform(0.7, 1.3)
-            )
-            for _ in range(n)
+    def set_range_mode(self, mode):
+        if mode not in RANGE_MODES:
+            mode = DEFAULT_RANGE_MODE
+
+        self.range_mode = mode
+        self.max_km = RANGE_MODES[mode]["max_km"]
+
+        # lọc bỏ target ngoài range (an toàn)
+        self.targets = [
+            t for t in self.targets
+            if t["range_km"] <= self.max_km
         ]
 
-    def reset(self, max_km, count=6):
-        """Gọi khi đổi mode radar"""
-        self.max_km = max_km
-        self.targets = self._generate_targets(count)
-
-    def update(self, sweep_angle):
-        """Cập nhật trail khi tia quét đi qua"""
-        for t in self.targets:
-            diff = abs((sweep_angle - t.angle + 180) % 360 - 180)
-            if diff < 2.0:
-                t.trail.insert(0, [t.angle, t.distance, 255])
-
-            for tr in t.trail:
-                tr[2] -= 10
-
-            t.trail = [tr for tr in t.trail if tr[2] > 0]
+    def update_from_echo(self, echoes):
+        # echoes: list of dict {angle, range_km, power}
+        self.targets = [
+            e for e in echoes
+            if e["range_km"] <= self.max_km
+        ]
 
     def draw(self, painter, cx, cy, radius):
-        """Vẽ target + đuôi mờ"""
+        if self.max_km <= 0:
+            return
+
         for t in self.targets:
-            for ang, dist, alpha in t.trail:
-                r = dist / self.max_km * radius
-                rad = math.radians(90 - ang)
+            r = t["range_km"] / self.max_km * radius
+            # góc radar: 0° = Bắc
+            import math
+            rad = math.radians(90 - t["angle"])
+            x = int(cx + r * math.cos(rad))
+            y = int(cy - r * math.sin(rad))
 
-                x = cx + r * math.cos(rad)
-                y = cy - r * math.sin(rad)
+            power = t.get("power", 1.0)
+            alpha = max(50, min(255, int(255 * power)))
 
-                size = int(6 * t.strength)
-                painter.setBrush(QColor(0, 255, 0, int(alpha)))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(
-                    int(x - size / 2),
-                    int(y - size / 2),
-                    size,
-                    size
-                )
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 255, 0, alpha))
+            painter.drawEllipse(x - 3, y - 3, 6, 6)
+

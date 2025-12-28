@@ -1,0 +1,137 @@
+# data/model.py
+import threading
+import time
+from config import WATCHDOG_TIMEOUT, DEFAULT_RANGE_MODE
+
+class RadarModel:
+    """
+    Radar Model trung tâm (thread-safe)
+    - Nhận dữ liệu thiết bị
+    - Dead-reckoning sweep
+    - Watchdog mất tín hiệu
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        
+        self.range_mode = DEFAULT_RANGE_MODE
+        
+        # ====== SCAN =======
+        self.scan_id = 0
+        self.new_scan = False
+
+        # ===== SWEEP =====
+        self.angle = 0.0
+        self.speed = 0.0
+        self.prev_angle = None
+        self.last_angle_time = None
+
+        # ===== ECHO (PPI) =====
+        self.echo_map = {}    # angle -> list echo
+
+        # ===== STATUS =====
+        self.tx_on = False
+        self.tx_mode = 0
+        self.dummy = [0] * 10
+        self.connected = False
+
+        self.last_frame_time = None
+
+    # ==================================================
+    # UPDATE FROM DEVICE (IO THREAD)
+    # ==================================================
+    def update_from_device(self, frame: dict):
+        now = time.time()
+
+        with self._lock:
+            # ----- connection -----
+            self.connected = True
+            self.last_frame_time = now
+            self.new_scan = False
+            
+            # ------ range mode ------
+            if "range_mode" in frame:
+                self.range_mode = frame["range_mode"]
+
+            # ------ sweep --------
+            if "angle" in frame:
+                ang = frame["angle"] % 360
+
+                if self.prev_angle is not None and ang < self.prev_angle:
+                    self.scan_id += 1
+                    self.new_scan = True
+                    self.echo_map.clear()
+
+                self.prev_angle = ang
+                self.angle = ang
+                self.last_angle_time = now
+
+            if "speed" in frame:
+                self.speed = frame["speed"]
+
+            # ----- echo -----
+            ranges = frame.get("ranges", [])
+            power = frame.get("power", [])
+
+            if ranges:
+                self.echo_map[self.angle] = [
+                    {
+                        "angle": self.angle,
+                        "range_km": r,
+                        "power": power[i] if i < len(power) else 1.0
+                    }
+                    for i, r in enumerate(ranges)
+                ]
+
+            # ----- status -----
+            status = frame.get("status", {})
+            self.tx_on = status.get("tx_on", self.tx_on)
+            self.tx_mode = status.get("tx_mode", self.tx_mode)
+            self.dummy = status.get("dummy", self.dummy)
+
+    # ==================================================
+    # WATCHDOG + DEAD-RECKONING
+    # ==================================================
+    def _check_watchdog(self):
+        if self.last_frame_time is None:
+            return False
+        return (time.time() - self.last_frame_time) <= WATCHDOG_TIMEOUT
+
+    def predict_angle(self):
+        if self.last_angle_time is None:
+            return self.angle
+
+        dt = time.time() - self.last_angle_time
+        return (self.angle + self.speed * dt) % 360
+
+    # ==================================================
+    # SNAPSHOT FOR GUI
+    # ==================================================
+    def get_snapshot(self):
+        with self._lock:
+            alive = self._check_watchdog()
+            self.connected = alive
+
+            echoes = []
+            for v in self.echo_map.values():
+                echoes.extend(v)
+
+            return {
+                "angle": self.predict_angle(),
+                "speed": self.speed,
+                "echoes": echoes,
+                "scan_id": self.scan_id,
+                "new_scan": self.new_scan,
+                "connected": alive,
+                "tx_on": self.tx_on,
+                "tx_mode": self.tx_mode,
+                "range_mode": self.range_mode,
+                "dummy": list(self.dummy),
+            }
+
+    # ==================================================
+    # SCAN CONTROL
+    # ==================================================
+    def clear_echo_map(self):
+        with self._lock:
+            self.echo_map.clear()

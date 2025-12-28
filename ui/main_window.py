@@ -1,87 +1,70 @@
-# ui/main_window.py
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget,
     QPushButton, QVBoxLayout, QHBoxLayout,
-    QLabel, QSlider
+    QLabel, QApplication
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt, QTimer
 
 from radar.canvas import RadarCanvas
-from config import GRID_LABEL_FONT_SIZE
+from data.radar_model import RadarModel
+from data.com_input import RadarCOMInput
+from data.simulator import RadarSimulator
+from ui.startup_dialog import StartupDialog
+from ui.simtarget_dialog import SimTargetDialog
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Radar Display")
+        self.setWindowTitle("Radar PPI")
         self.showFullScreen()
 
-        # ===== RADAR CANVAS =====
-        self.radar = RadarCanvas()
+        # ===== MODEL =====
+        self.model = RadarModel()
 
-        # ===== CONTROLS =====
+        # ===== CANVAS =====
+        self.radar = RadarCanvas(self.model)
+
+        # ===== MARKER BUTTON =====
+        self.btn_marker = QPushButton("MARKER")
+        self.btn_marker.setCheckable(True)
+        self.btn_marker.clicked.connect(self.toggle_marker)
+        self._set_marker_style(False)
+
+        # ===== TX STATUS =====
+        self.btn_tx = QPushButton("TX OFF")
+        self.btn_tx.setEnabled(False)
+        self._set_tx_style(False)
+
+        # ===== SWEEP SPEED DISPLAY =====
+        self.lbl_speed = QLabel("SPEED: 0.0 deg/s")
+        self.lbl_speed.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_speed.setStyleSheet("""
+            QLabel {
+                color: #00ff00;
+                font-size: 18px;
+                height: 40px;
+            }
+        """)
+
+        # ===== EXIT =====
         btn_exit = QPushButton("EXIT")
         btn_exit.clicked.connect(QApplication.quit)
-
-        btn_marker = QPushButton("MARKER")
-        btn_marker.setCheckable(True)
-        btn_marker.clicked.connect(self.toggle_marker)
-
-        # --- Direction ---
-        btn_dir = QPushButton("Đảo chiều quét")
-        btn_dir.clicked.connect(self.radar.toggle_direction)
-
-        speed_label = QLabel("Tốc độ quét (deg/s)")
-        self.speed_value = QLabel("0")
-
-        speed_slider = QSlider(Qt.Orientation.Horizontal)
-        speed_slider.setRange(0, 16)
-        speed_slider.setValue(0)
-        speed_slider.valueChanged.connect(self.update_speed)
-
-        # ===== RANGE MODE BUTTONS =====
-        btn_mode1 = QPushButton("0–50 km")
-        btn_mode2 = QPushButton("0–150 km")
-        btn_mode3 = QPushButton("0–300 km")
-
-        btn_mode1.clicked.connect(lambda: self.radar.set_mode(1))
-        btn_mode2.clicked.connect(lambda: self.radar.set_mode(2))
-        btn_mode3.clicked.connect(lambda: self.radar.set_mode(3))
-        
-        # --- Style ---
-        for w in (btn_mode1, btn_mode2, btn_mode3, btn_dir):
-            w.setFixedHeight(55)
-            w.setStyleSheet("""
-                QPushButton {
-                    background-color: #202020;
-                    color: #00ff00;
-                    border: 1px solid #008800;
-                }
-            """)
-
         btn_exit.setStyleSheet("""
             QPushButton {
                 background-color: #aa0000;
                 color: white;
                 font-size: 20px;
+                height: 60px;
             }
         """)
 
-        speed_label.setStyleSheet(f"color:#00ff00; font-size:{GRID_LABEL_FONT_SIZE}px")
-        self.speed_value.setStyleSheet("color:#00ff00; font-size:16px")
-
-        # ===== LAYOUT RIGHT =====
+        # ===== SIDE BAR =====
         side = QVBoxLayout()
-        side.addWidget(btn_marker)
-        side.addWidget(btn_dir)
-        side.addWidget(speed_label)
-        side.addWidget(self.speed_value)
-        side.addWidget(speed_slider)
-        side.addWidget(btn_mode1)
-        side.addWidget(btn_mode2)
-        side.addWidget(btn_mode3)
+        side.addWidget(self.btn_marker)
+        side.addWidget(self.btn_tx)
+        side.addWidget(self.lbl_speed)
         side.addStretch()
         side.addWidget(btn_exit)
 
@@ -93,14 +76,97 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(container)
 
-    # ================= CALLBACKS =================
-    def toggle_marker(self):
-        state = self.sender().isChecked()
-        self.radar.marker_mgr.toggle(state)
-        self.sender().setStyleSheet(
-            "background-color: orange;" if state else ""
-        )
+        # ===== DATA SOURCE =====
+        self.input_device = None
+        self.simulator = None
+        self.sim_dialog = None
 
-    def update_speed(self, value):
-        self.speed_value.setText(str(value))
-        self.radar.set_speed(value)
+        self.select_mode()
+
+        # ===== UI UPDATE TIMER =====
+        self.ui_timer = QTimer(self)
+        self.ui_timer.timeout.connect(self.update_status)
+        self.ui_timer.start(100)
+
+    # =============================
+    # MODE SELECTION
+    # =============================
+    def select_mode(self):
+        dlg = StartupDialog(self)
+        dlg.exec()
+
+        if dlg.choice == "REAL":
+            self.start_real_radar()
+        elif dlg.choice == "SIM":
+            self.start_simulator()
+
+    def start_real_radar(self):
+        self.input_device = RadarCOMInput(self.model)
+        self.input_device.start()
+
+    def start_simulator(self):
+        self.simulator = RadarSimulator(self.model)
+        self.simulator.start()
+
+        self.sim_dialog = SimTargetDialog(self.simulator)
+        self.sim_dialog.show()
+
+    # =============================
+    # MARKER
+    # =============================
+    def toggle_marker(self):
+        state = self.btn_marker.isChecked()
+        self.radar.marker_mgr.toggle(state)
+        self._set_marker_style(state)
+
+    def _set_marker_style(self, state: bool):
+        self.btn_marker.setStyleSheet("""
+            QPushButton {
+                background-color: %s;
+                color: %s;
+                font-size: 18px;
+                height: 60px;
+            }
+        """ % (
+            "orange" if state else "#202020",
+            "black" if state else "#00ff00"
+        ))
+
+    # =============================
+    # STATUS UPDATE
+    # =============================
+    def update_status(self):
+        snap = self.model.get_snapshot()
+
+        # TX
+        tx_on = snap["tx_on"] and snap["connected"]
+        self.btn_tx.setText("TX ON" if tx_on else "TX OFF")
+        self._set_tx_style(tx_on)
+
+        # SPEED DISPLAY (READ ONLY)
+        self.lbl_speed.setText(f"TỐC ĐỘ QUÉT: {snap['speed']:.1f} deg/s")
+
+    def _set_tx_style(self, tx_on: bool):
+        self.btn_tx.setStyleSheet("""
+            QPushButton {
+                background-color: %s;
+                color: %s;
+                font-size: 22px;
+                height: 70px;
+            }
+        """ % (
+            "#00aa00" if tx_on else "black",
+            "white" if tx_on else "#00ff00"
+        ))
+
+    # =============================
+    # CLEAN EXIT
+    # =============================
+    def closeEvent(self, event):
+        if self.input_device:
+            self.input_device.stop()
+
+        if self.simulator:
+            self.simulator.stop()
+
+        event.accept()
