@@ -34,6 +34,8 @@ class RadarCanvas(QWidget):
 
     # ================= UPDATE =================
     def update_view(self):
+        self.model.poll_buffer() # Đọc frame từ buffer
+        
         snap = self.model.get_snapshot()
 
         # ===== RANGE MODE =====

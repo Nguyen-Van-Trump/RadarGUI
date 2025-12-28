@@ -1,6 +1,9 @@
 # data/model.py
 import threading
 import time
+
+from .frame_buffer import FrameBuffer
+
 from config import WATCHDOG_TIMEOUT, DEFAULT_RANGE_MODE
 
 class RadarModel:
@@ -13,6 +16,7 @@ class RadarModel:
 
     def __init__(self):
         self._lock = threading.Lock()
+        self.buffer = FrameBuffer()
         
         self.range_mode = DEFAULT_RANGE_MODE
         
@@ -40,6 +44,13 @@ class RadarModel:
     # ==================================================
     # UPDATE FROM DEVICE (IO THREAD)
     # ==================================================
+    
+    # 1 frame buffer
+    def poll_buffer(self):
+        frame = self.buffer.read()
+        if frame:
+            self.update_from_device(frame)
+
     def update_from_device(self, frame: dict):
         now = time.time()
 
