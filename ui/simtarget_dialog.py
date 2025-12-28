@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout,
     QDoubleSpinBox, QPushButton, QListWidget,
-    QListWidgetItem, QHBoxLayout, QCheckBox, QLabel
+    QListWidgetItem, QHBoxLayout, QCheckBox,
+    QLabel, QSlider
 )
 from PyQt6.QtCore import Qt
 from data.simulator import SimTarget
@@ -15,7 +16,7 @@ class SimTargetDialog(QDialog):
 
         main = QVBoxLayout(self)
 
-        # ================= INPUT FORM =================
+        # ================= TARGET INPUT =================
         form = QFormLayout()
 
         self.angle = QDoubleSpinBox()
@@ -35,8 +36,8 @@ class SimTargetDialog(QDialog):
         self.heading.setRange(0, 360)
         self.heading.setSuffix(" °")
 
-        form.addRow("Góc ban đầu", self.angle)
-        form.addRow("Cự ly ban đầu", self.range_km)
+        form.addRow("Góc mục tiêu", self.angle)
+        form.addRow("Cự ly mục tiêu", self.range_km)
         form.addRow("Tốc độ mục tiêu", self.speed)
         form.addRow("Hướng bay", self.heading)
 
@@ -45,8 +46,80 @@ class SimTargetDialog(QDialog):
         # ================= AUTO SCALE =================
         self.chk_auto = QCheckBox("Auto scale range")
         self.chk_auto.setChecked(True)
-        self.chk_auto.stateChanged.connect(self.toggle_auto_scale)
+        self.chk_auto.stateChanged.connect(
+            lambda s: setattr(self.simulator, "auto_scale", bool(s))
+        )
         main.addWidget(self.chk_auto)
+
+        # ================= SWEEP CONTROL =================
+        main.addWidget(QLabel("Điều khiển đường quét"))
+
+        sweep_form = QFormLayout()
+
+        # --- Sweep angle ---
+        angle_layout = QHBoxLayout()
+
+        self.sweep_angle = QDoubleSpinBox()
+        self.sweep_angle.setRange(0, 360)
+        self.sweep_angle.setSuffix(" °")
+        self.sweep_angle.setValue(0)
+
+        btn_set_angle = QPushButton("SET")
+        btn_set_angle.setFixedWidth(60)
+        btn_set_angle.clicked.connect(
+            lambda: self.simulator.set_sweep_angle(self.sweep_angle.value())
+        )
+
+        angle_layout.addWidget(self.sweep_angle)
+        angle_layout.addWidget(btn_set_angle)
+
+        sweep_form.addRow("Vị trí quét", angle_layout)
+
+        # --- Sweep speed ---
+        speed_layout = QHBoxLayout()
+
+        self.sweep_speed = QSlider(Qt.Orientation.Horizontal)
+        self.sweep_speed.setRange(0, 16)
+        self.sweep_speed.setValue(int(self.simulator.speed))
+
+        self.lbl_speed = QLabel(f"{self.sweep_speed.value()} deg/s")
+        self.lbl_speed.setFixedWidth(70)
+
+        btn_set_speed = QPushButton("SET")
+        btn_set_speed.setFixedWidth(60)
+        btn_set_speed.clicked.connect(
+            lambda: self.simulator.set_sweep_speed(self.sweep_speed.value())
+        )
+
+        speed_layout.addWidget(self.sweep_speed)
+        speed_layout.addWidget(self.lbl_speed)
+        speed_layout.addWidget(btn_set_speed)
+
+        self.sweep_speed.valueChanged.connect(
+            lambda v: self.lbl_speed.setText(f"{v} deg/s")
+        )
+
+        sweep_form.addRow("Tốc độ quét", speed_layout)
+
+        main.addLayout(sweep_form)
+        
+        # ================= TX TOGGLE =================
+        self.btn_tx = QPushButton("TX ON")
+        self.btn_tx.setCheckable(True)
+        self.btn_tx.setChecked(True)   # mặc định phát
+
+        self.btn_tx.setStyleSheet("""
+            QPushButton {
+                background-color: #007700;
+                color: white;
+                font-weight: bold;
+                height: 30px;
+            }
+        """)
+
+        self.btn_tx.toggled.connect(self.toggle_tx)
+        main.addWidget(self.btn_tx)
+
 
         # ================= BUTTONS =================
         btn_add = QPushButton("Thêm mục tiêu")
@@ -86,9 +159,6 @@ class SimTargetDialog(QDialog):
         main.addLayout(h2)
 
     # ================= CALLBACKS =================
-    def toggle_auto_scale(self, state):
-        self.simulator.auto_scale = bool(state)
-
     def add_target(self):
         t = SimTarget(
             angle_deg=self.angle.value(),
@@ -98,11 +168,16 @@ class SimTargetDialog(QDialog):
         )
 
         if self.simulator.add_target(t):
-            item = QListWidgetItem(
+            self.list_targets.addItem(
+                f"A={self.angle.value():.1f}° | "
                 f"R={self.range_km.value():.1f} km | "
                 f"V={self.speed.value():.1f} km/s"
+
             )
-            self.list_targets.addItem(item)
+
+    def send_sweep(self):
+        self.simulator.set_sweep_angle(self.sweep_angle.value())
+        self.simulator.set_sweep_speed(self.sweep_speed.value())
 
     def delete_selected(self):
         row = self.list_targets.currentRow()
@@ -113,3 +188,25 @@ class SimTargetDialog(QDialog):
     def reset_simulator(self):
         self.simulator.reset()
         self.list_targets.clear()
+
+    def toggle_tx(self, state: bool):
+        self.simulator.set_tx(state)
+
+        if state:
+            self.btn_tx.setText("TX ON")
+            self.btn_tx.setStyleSheet("""
+                QPushButton {
+                    background-color: #007700;
+                    color: white;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            self.btn_tx.setText("TX OFF")
+            self.btn_tx.setStyleSheet("""
+                QPushButton {
+                    background-color: #333333;
+                    color: #00ff00;
+                    font-weight: bold;
+                }
+            """)
