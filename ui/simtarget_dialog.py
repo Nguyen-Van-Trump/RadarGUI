@@ -152,8 +152,10 @@ class SimTargetDialog(QDialog):
 
         if self.simulator.add_target(t):
             self.list_targets.addItem(
+                f"A={self.angle.value():.1f}° | "
                 f"R={self.range_km.value():.1f} km | "
                 f"V={self.speed.value():.1f} km/s"
+
             )
 
     def send_sweep(self):
