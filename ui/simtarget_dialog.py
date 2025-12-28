@@ -102,6 +102,23 @@ class SimTargetDialog(QDialog):
         sweep_form.addRow("Tốc độ quét", speed_layout)
 
         main.addLayout(sweep_form)
+        
+        # ================= TX TOGGLE =================
+        self.btn_tx = QPushButton("TX ON")
+        self.btn_tx.setCheckable(True)
+        self.btn_tx.setChecked(True)   # mặc định phát
+
+        self.btn_tx.setStyleSheet("""
+            QPushButton {
+                background-color: #007700;
+                color: white;
+                font-weight: bold;
+                height: 30px;
+            }
+        """)
+
+        self.btn_tx.toggled.connect(self.toggle_tx)
+        main.addWidget(self.btn_tx)
 
 
         # ================= BUTTONS =================
@@ -171,3 +188,25 @@ class SimTargetDialog(QDialog):
     def reset_simulator(self):
         self.simulator.reset()
         self.list_targets.clear()
+
+    def toggle_tx(self, state: bool):
+        self.simulator.set_tx(state)
+
+        if state:
+            self.btn_tx.setText("TX ON")
+            self.btn_tx.setStyleSheet("""
+                QPushButton {
+                    background-color: #007700;
+                    color: white;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            self.btn_tx.setText("TX OFF")
+            self.btn_tx.setStyleSheet("""
+                QPushButton {
+                    background-color: #333333;
+                    color: #00ff00;
+                    font-weight: bold;
+                }
+            """)

@@ -36,13 +36,14 @@ class RadarSimulator(threading.Thread):
         self.model = model
         self.targets = []
         self.max_targets = max_targets
-
+        
         # ===== SWEEP =====
         self.angle = 0.0
         self.speed = 0.0  # deg/s
 
         # ===== THREAD CONTROL =====
         self.running = False     # phát dữ liệu
+        self.tx_on = True        # phát hay không
         self.alive = True        # vòng thread
 
         # ===== RANGE AUTO SCALE =====
@@ -61,6 +62,9 @@ class RadarSimulator(threading.Thread):
             return False
         self.targets.append(target)
         return True
+    
+    def set_tx(self, state: bool):
+        self.tx_on = state
 
     # ================= RANGE LOGIC =================
     def _max_target_range(self):
@@ -157,10 +161,10 @@ class RadarSimulator(threading.Thread):
             for t in self.targets:
                 t.step(dt)
                 ang, r = t.polar()
-
-                if abs((ang - self.angle + 180) % 360 - 180) < BEAM_WIDTH / 2:
-                    ranges.append(r)
-                    power.append(t.power)
+                if self.tx_on:
+                    if abs((ang - self.angle + 180) % 360 - 180) < BEAM_WIDTH / 2:
+                        ranges.append(r)
+                        power.append(t.power)
 
             # ===== AUTO SCALE =====
             max_range = self._max_target_range()
@@ -174,7 +178,7 @@ class RadarSimulator(threading.Thread):
                 "ranges": ranges,
                 "power": power,
                 "status": {
-                    "tx_on": self.running,
+                    "tx_on": self.tx_on,
                     "tx_mode": 1,
                     "dummy": [0] * 10
                 }
