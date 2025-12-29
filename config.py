@@ -27,6 +27,11 @@ COLOR_PANEL_BG = (45, 45, 45)
 # Radar canvas background (đã có hoặc chỉnh lại)
 COLOR_RADAR_BG = (0, 25, 0)       # xanh radar
 
+# Text colors
+COLOR_TEXT_PRIMARY = (230, 230, 230)   # chữ chính (trắng xám, dễ đọc)
+COLOR_TEXT_SECONDARY = (180, 180, 180) # chữ phụ
+COLOR_TEXT_ACCENT = (0, 255, 0)        # nhấn (xanh radar, nếu cần)
+
 # ================= MARKER/CURSOR/TARGET COLORS =================
 
 COLOR_TARGET = (0, 255, 0)
