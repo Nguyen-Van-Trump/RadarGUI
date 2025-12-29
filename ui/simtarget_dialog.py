@@ -1,10 +1,5 @@
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout,
-    QDoubleSpinBox, QPushButton, QListWidget,
-    QListWidgetItem, QHBoxLayout, QCheckBox,
-    QLabel, QSlider
-)
-from PyQt6.QtCore import Qt
+from qt_compat import *
+
 from data.simulator import SimTarget
 
 
@@ -78,7 +73,7 @@ class SimTargetDialog(QDialog):
         # --- Sweep speed ---
         speed_layout = QHBoxLayout()
 
-        self.sweep_speed = QSlider(Qt.Orientation.Horizontal)
+        self.sweep_speed = QSlider(Horizontal)
         self.sweep_speed.setRange(0, 16)
         self.sweep_speed.setValue(int(self.simulator.speed))
 

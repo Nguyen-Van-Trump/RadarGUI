@@ -1,9 +1,7 @@
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget,
-    QPushButton, QVBoxLayout, QHBoxLayout,
-    QLabel, QApplication
-)
-from PyQt6.QtCore import Qt, QTimer
+from qt_compat import *
+from qt_compat import QPalette, QColor
+from config import COLOR_MAIN_BG
+
 
 from radar.canvas import RadarCanvas
 from data.radar_model import RadarModel
@@ -16,6 +14,16 @@ from ui.simtarget_dialog import SimTargetDialog
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        
+        # ===== SET MAIN WINDOW BACKGROUND COLOR =====
+        palette = self.palette()
+        palette.setColor(
+            QPalette.Window,
+            QColor(*COLOR_MAIN_BG)
+        )
+        self.setPalette(palette)
+        self.setAutoFillBackground(True)
+
 
         self.setWindowTitle("Radar PPI")
         self.showFullScreen()
@@ -39,7 +47,7 @@ class MainWindow(QMainWindow):
 
         # ===== SWEEP SPEED DISPLAY =====
         self.lbl_speed = QLabel("SPEED: 0.0 deg/s")
-        self.lbl_speed.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_speed.setAlignment(AlignCenter)
         self.lbl_speed.setStyleSheet("""
             QLabel {
                 color: #00ff00;

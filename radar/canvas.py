@@ -1,8 +1,6 @@
-from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QPainter, QColor
+from qt_compat import *
 
-from config import RADAR_MARGIN, COLOR_BG, DEFAULT_RANGE_MODE
+from config import RADAR_MARGIN, COLOR_RADAR_BG, DEFAULT_RANGE_MODE
 from radar.grid import GridManager
 from radar.sweep import SweepController
 from radar.targets import TargetManager
@@ -74,13 +72,13 @@ class RadarCanvas(QWidget):
     # ================= DRAW =================
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(RenderAntialias)
 
         w, h = self.width(), self.height()
         cx, cy = w // 2, h // 2
         radius = min(w, h) // 2 - RADAR_MARGIN
 
-        painter.fillRect(self.rect(), QColor(*COLOR_BG))
+        painter.fillRect(self.rect(), QColor(*COLOR_RADAR_BG))
 
         self.grid_mgr.draw(painter, cx, cy, radius)
         self.target_mgr.draw(painter, cx, cy, radius)

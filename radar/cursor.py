@@ -1,7 +1,6 @@
 # radar/cursor.py
 import math
-from PyQt6.QtGui import QColor, QPen
-
+from qt_compat import QColor, QPen
 
 class CursorManager:
     def __init__(self):

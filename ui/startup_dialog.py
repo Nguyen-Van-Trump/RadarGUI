@@ -1,7 +1,4 @@
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QPushButton, QLabel
-)
-
+from qt_compat import QDialog, QVBoxLayout, QPushButton, QLabel
 
 class StartupDialog(QDialog):
     def __init__(self, parent=None):

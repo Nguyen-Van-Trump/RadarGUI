@@ -1,6 +1,6 @@
 # app.py
 import sys
-from PyQt6.QtWidgets import QApplication
+from qt_compat import QApplication
 
 from ui.main_window import MainWindow
 
@@ -9,7 +9,10 @@ def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    except AttributeError:
+        sys.exit(app.exec_())
 
 
 if __name__ == "__main__":

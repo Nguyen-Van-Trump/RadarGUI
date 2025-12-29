@@ -1,7 +1,6 @@
 # radar/targets.py
 import math
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from qt_compat import *
 from config import COLOR_TARGET, RANGE_MODES, DEFAULT_RANGE_MODE
 
 
@@ -47,7 +46,7 @@ class TargetManager:
             power = t.get("power", 1.0)
             alpha = max(50, min(255, int(255 * power)))
 
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(0, 255, 0, alpha))
+            painter.setPen(NoPen)
+            painter.setBrush(QColor(*COLOR_TARGET, alpha))
             painter.drawEllipse(x - 3, y - 3, 6, 6)
 
