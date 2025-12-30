@@ -21,37 +21,7 @@
 ## 2. Kiến trúc tổng thể
 ## Runtime Architecture (Simulator & Real Radar)
 
-```mermaid
-flowchart TD
-
-    %% ===== MODE SELECTION =====
-    START[Application Start]
-    START --> MODE[Startup Dialog<br/>Select Mode]
-
-    MODE -->|Simulator| SIM_SRC[Simulator Engine]
-    MODE -->|Real Radar| UART_SRC[UART Reader]
-
-    %% ===== SIMULATOR PATH =====
-    SIM_SRC --> SIM_FRAME[Frame dict<br/>simulated data]
-
-    %% ===== REAL RADAR PATH =====
-    UART_SRC --> PARSER[Frame Parser]
-    PARSER --> REAL_FRAME[Frame dict<br/>parsed from UART]
-
-    %% ===== COMMON FRAME PIPELINE =====
-    SIM_FRAME --> BUF[FrameBuffer<br/>size = 1]
-    REAL_FRAME --> BUF
-
-    BUF --> MODEL[RadarModel<br/>update_state]
-    MODEL --> SNAP[Snapshot<br/>read only]
-
-    %% ===== UI =====
-    SNAP --> CANVAS[RadarCanvas<br/>paintEvent]
-    SNAP --> UI[MainWindow]
-
-    %% ===== CONTROL FLOW =====
-    UI -->|TX ON / OFF| MODEL
-    UI -->|Sweep control| MODEL
+![RadarGUI Runtime Architecture](flowchart.png)
 
 
 Nguyên tắc thiết kế
