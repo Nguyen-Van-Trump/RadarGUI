@@ -1,6 +1,6 @@
 # radar/sweep.py
 import math
-from PyQt6.QtGui import QPen, QColor
+from qt_compat import QPen, QColor
 from config import COLOR_SWEEP
 
 

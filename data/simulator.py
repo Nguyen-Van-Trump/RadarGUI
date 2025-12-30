@@ -184,6 +184,6 @@ class RadarSimulator(threading.Thread):
                 }
             }
 
-            self.model.update_from_device(frame)
+            self.model.buffer.write(frame)
             time.sleep(0.03)
 

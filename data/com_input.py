@@ -62,7 +62,7 @@ class RadarCOMInput(threading.Thread):
         while self.running:
             frame = self.read_frame()
             if frame:
-                self.model.update_from_device(frame)
+                self.model.buffer.write(frame)
 
     def stop(self):
         self.running = False

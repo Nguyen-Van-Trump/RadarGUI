@@ -1,7 +1,6 @@
 # radar/markers.py
 import math
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPen
+from qt_compat import *
 
 from config import MARKER_SIZE, MARKER_MAX, COLOR_MARKER
 
@@ -37,8 +36,10 @@ class MarkerManager:
         if not self.enabled:
             return False
 
-        dx = event.position().x() - cx
-        dy = cy - event.position().y()
+        pos = event_pos(event)
+        dx = pos.x() - cx
+        dy = cy - pos.y()
+
         dist_px = math.hypot(dx, dy)
 
         if dist_px > radius:
@@ -48,14 +49,14 @@ class MarkerManager:
         km = dist_px / radius * max_km
 
         # Chuột trái → thêm marker
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == MouseLeft:
             self.markers.append((angle, km))
             if len(self.markers) > self.max_markers:
                 self.markers.pop(0)
             return True
 
         # RIGHT CLICK → REMOVE LATEST
-        elif event.button() == Qt.MouseButton.RightButton and self.markers:
+        elif event.button() == MouseRight and self.markers:
             self.markers.pop(-1)
             return True
 
@@ -66,8 +67,7 @@ class MarkerManager:
         if not self.enabled:
             return
 
-        r,g,b = COLOR_MARKER
-        painter.setPen(QPen(QColor(r, g, b), 2))
+        painter.setPen(QPen(QColor(*COLOR_MARKER), 2))
 
         for ang, km in self.markers:
             r = km / max_km * radius

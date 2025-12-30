@@ -1,5 +1,5 @@
 import math
-from PyQt6.QtGui import QColor, QPen
+from qt_compat import QColor, QPen
 
 from config import (
     COLOR_GRID_MAIN, COLOR_GRID_MINOR, COLOR_GRID_STEP,
