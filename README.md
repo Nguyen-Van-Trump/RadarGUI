@@ -2,42 +2,29 @@
 
 ## 1. Giới thiệu
 
-**RadarGUI** là ứng dụng hiển thị radar thời gian thực, hỗ trợ cả **radar giả lập (Simulator)** và **radar thật qua UART**.  
-Ứng dụng được thiết kế để chạy ổn định trên:
+**RadarGUI** là ứng dụng hiển thị radar thời gian thực, hỗ trợ:
 
-- **PC (Windows / Linux)** với PyQt6  
-- **Raspberry Pi 4** với PyQt5  
-  → *không cần viết lại code, không cần Qt6 trên Pi*
+- Radar giả lập (Simulator)
+- Radar thật qua UART (STM32 / MCU)
+- Hiển thị PPI radar (đường quét, lưới, mục tiêu, marker)
+- Hoạt động ổn định 24/7 trên Raspberry Pi 4
 
-Dự án tập trung vào:
-- Kiến trúc realtime nhẹ (soft real-time)
-- Tách biệt rõ UI – Model – IO
-- Dễ mở rộng cho radar thật (STM32 / MCU)
+Ứng dụng được thiết kế để chạy trên **2 môi trường**:
+
+- **PC (Windows / Linux x86)** → PyQt6 (phát triển, debug)
+- **Raspberry Pi 4** → PyQt5 (triển khai thực tế)
+
+👉 **Không cần viết lại code khi chuyển từ PC sang Pi**.
 
 ---
 
 ## 2. Kiến trúc tổng thể
+```mermaid
+flowchart TD
+    SIM[Simulator / UART] --> BUF[FrameBuffer (1)]
+    BUF --> MODEL[RadarModel]
+    MODEL --> UI[RadarCanvas / MainWindow]
 
-┌──────────────┐
-│ Simulator    │
-│ UART Input   │
-└──────┬───────┘
-       │ frame (dict)
-       ▼
-┌──────────────────┐
-│ FrameBuffer (1)  │   ← overwrite buffer
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ RadarModel       │
-│ - update state   │
-│ - snapshot       │
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ RadarCanvas (UI) │
-│ MainWindow       │
-└──────────────────┘
 Nguyên tắc thiết kế
 
     Model là ranh giới thread
@@ -99,6 +86,7 @@ Nguyên tắc thiết kế
 4. Chuẩn dữ liệu Frame (Frame Contract)
 
 Model nhận frame chuẩn dạng Python dict:
+```python
 frame = {
     "angle": float,        # góc quét hiện tại (deg)
     "speed": float,        # tốc độ quét (deg/s)
